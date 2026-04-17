@@ -4,6 +4,28 @@
   min-height: 100vh;
 }
 
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+}
+
+.login-card {
+  width: min(420px, 92vw);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-card h2 {
+  margin: 0 0 6px;
+}
+
 .toolbar {
   padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;

@@ -73,6 +73,8 @@ const DEFAULT_VIEW: MapViewState = {
   center: { lat: 20.5937, lng: 78.9629 },
   zoom: 5,
 }
+const APP_USERNAME = 'dilip.p@maticarbon.com'
+const APP_PASSWORD = 'Dilip@Mati'
 const RUNTIME_APP_CONFIG =
   typeof window !== 'undefined' ? (window.__APP_CONFIG__ ?? {}) : {}
 const ENV_API_KEYS: ApiKeys = {
@@ -202,6 +204,13 @@ const getBoundaryCenter = (coordinates: [number, number][]) => {
 }
 
 function App() {
+  const [loginUsername, setLoginUsername] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem('app-authenticated') === 'true'
+  })
   const [apiKeys] = useState<ApiKeys>(ENV_API_KEYS)
   const [viewState, setViewState] = useState<MapViewState>(DEFAULT_VIEW)
   const [panes, setPanes] = useState<Pane[]>([
@@ -497,6 +506,41 @@ function App() {
     // Intentionally disabled: camera sync across providers causes jitter because
     // Google and Mapbox camera/zoom scales differ. We only sync data overlays.
   }, [])
+
+  const handleLogin = () => {
+    if (loginUsername === APP_USERNAME && loginPassword === APP_PASSWORD) {
+      setIsAuthenticated(true)
+      setLoginError('')
+      sessionStorage.setItem('app-authenticated', 'true')
+      return
+    }
+    setLoginError('Invalid username or password.')
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-shell">
+        <div className="login-card">
+          <h2>Sign in to Map Comparison</h2>
+          <label>Username</label>
+          <input
+            value={loginUsername}
+            onChange={(event) => setLoginUsername(event.target.value)}
+            placeholder="Enter username"
+          />
+          <label>Password</label>
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={(event) => setLoginPassword(event.target.value)}
+            placeholder="Enter password"
+          />
+          <button onClick={handleLogin}>Login</button>
+          {loginError ? <p className="error">{loginError}</p> : null}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
