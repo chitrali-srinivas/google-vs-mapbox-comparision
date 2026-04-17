@@ -50,7 +50,6 @@ type ApiKeys = {
 }
 
 const STORAGE_KEY = 'map-poc-state-v1'
-const KEY_SEQUENCE = 'XYXXY'
 const UNIT_OPTIONS: Unit[] = ['m2', 'acre', 'hectare']
 
 const unitLabel: Record<Unit, string> = {
@@ -67,6 +66,10 @@ const providerLabel: Record<ProviderType, string> = {
 const DEFAULT_VIEW: MapViewState = {
   center: { lat: 20.5937, lng: 78.9629 },
   zoom: 5,
+}
+const ENV_API_KEYS: ApiKeys = {
+  googleApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '',
+  mapboxToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? '',
 }
 const CENTER_EPSILON = 0.00001
 const ZOOM_EPSILON = 0.01
@@ -185,16 +188,7 @@ const getBoundaryCenter = (coordinates: [number, number][]) => {
 }
 
 function App() {
-  const [apiKeys, setApiKeys] = useState<ApiKeys>({
-    googleApiKey: '',
-    mapboxToken: '',
-  })
-  const [apiKeyDraft, setApiKeyDraft] = useState<ApiKeys>({
-    googleApiKey: '',
-    mapboxToken: '',
-  })
-  const [showKeyPopup, setShowKeyPopup] = useState(false)
-  const [typedBuffer, setTypedBuffer] = useState('')
+  const [apiKeys] = useState<ApiKeys>(ENV_API_KEYS)
   const [viewState, setViewState] = useState<MapViewState>(DEFAULT_VIEW)
   const [panes, setPanes] = useState<Pane[]>([
     { id: randomId('pane'), provider: 'google' },
@@ -239,14 +233,11 @@ function App() {
     if (!raw) return
     try {
       const parsed = JSON.parse(raw) as {
-        apiKeys?: ApiKeys
         viewState?: MapViewState
         panes?: Pane[]
         boundaries?: Boundary[]
         markers?: MarkerPoint[]
       }
-      if (parsed.apiKeys) setApiKeys(parsed.apiKeys)
-      if (parsed.apiKeys) setApiKeyDraft(parsed.apiKeys)
       if (parsed.viewState) setViewState(parsed.viewState)
       if (parsed.panes?.length) setPanes(parsed.panes)
       if (parsed.boundaries) setBoundaries(parsed.boundaries)
@@ -259,24 +250,9 @@ function App() {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ apiKeys, viewState, panes, boundaries, markers }),
+      JSON.stringify({ viewState, panes, boundaries, markers }),
     )
-  }, [apiKeys, viewState, panes, boundaries, markers])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
-      if (event.key.length !== 1) return
-      const next = `${typedBuffer}${event.key}`.slice(-KEY_SEQUENCE.length)
-      setTypedBuffer(next)
-      if (next === KEY_SEQUENCE) {
-        setApiKeyDraft(apiKeys)
-        setShowKeyPopup(true)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [apiKeys, typedBuffer])
+  }, [viewState, panes, boundaries, markers])
 
   useEffect(() => {
     if (!apiKeys.googleApiKey) {
@@ -503,16 +479,6 @@ function App() {
     setStatusText('Lat/Lng point plotted.')
   }
 
-  const saveApiKeys = () => {
-    const nextKeys = {
-      googleApiKey: apiKeyDraft.googleApiKey.trim(),
-      mapboxToken: apiKeyDraft.mapboxToken.trim(),
-    }
-    setApiKeys(nextKeys)
-    setShowKeyPopup(false)
-    setStatusText('API keys saved locally.')
-  }
-
   const onPaneViewChange = useCallback((_sourcePaneId: string, _next: MapViewState) => {
     // Intentionally disabled: camera sync across providers causes jitter because
     // Google and Mapbox camera/zoom scales differ. We only sync data overlays.
@@ -687,9 +653,7 @@ function App() {
               GPS: {gpsPoint.lat.toFixed(6)}, {gpsPoint.lng.toFixed(6)}
             </p>
           ) : null}
-          <p>
-            Hidden key popup trigger: <code>{KEY_SEQUENCE}</code> (case-sensitive)
-          </p>
+          <p>Keys are preconfigured in environment variables.</p>
         </aside>
 
         <main className="map-grid">
@@ -755,39 +719,6 @@ function App() {
         </main>
       </section>
 
-      {showKeyPopup ? (
-        <div className="popup-backdrop" onClick={() => setShowKeyPopup(false)}>
-          <div className="popup" onClick={(event) => event.stopPropagation()}>
-            <h2>API Keys</h2>
-            <label>Google Maps API Key</label>
-            <input
-              value={apiKeyDraft.googleApiKey}
-              onChange={(event) =>
-                setApiKeyDraft((current) => ({
-                  ...current,
-                  googleApiKey: event.target.value,
-                }))
-              }
-              placeholder="AIza..."
-            />
-            <label>Mapbox Token</label>
-            <input
-              value={apiKeyDraft.mapboxToken}
-              onChange={(event) =>
-                setApiKeyDraft((current) => ({
-                  ...current,
-                  mapboxToken: event.target.value,
-                }))
-              }
-              placeholder="Mapbox token"
-            />
-            <div className="row">
-              <button onClick={saveApiKeys}>Save Keys</button>
-              <button onClick={() => setShowKeyPopup(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -1144,7 +1075,11 @@ function MapboxPane({
   }, [gpsPoint, mapReady, styleReadyTick])
 
   if (!normalizedToken) {
-    return <div className="map-placeholder">Add Mapbox key via hidden key popup.</div>
+    return (
+      <div className="map-placeholder">
+        Missing `VITE_MAPBOX_ACCESS_TOKEN` in deployment environment.
+      </div>
+    )
   }
   if (mapError) {
     return <div className="map-placeholder">{mapError}</div>
@@ -1332,7 +1267,11 @@ function GooglePane({
   }, [gpsPoint])
 
   if (!apiKey) {
-    return <div className="map-placeholder">Add Google API key via hidden key popup.</div>
+    return (
+      <div className="map-placeholder">
+        Missing `VITE_GOOGLE_MAPS_API_KEY` in deployment environment.
+      </div>
+    )
   }
   return <div ref={containerRef} className="map-surface" />
 }
