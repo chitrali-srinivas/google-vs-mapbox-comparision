@@ -49,6 +49,12 @@ type ApiKeys = {
   mapboxToken: string
 }
 
+declare global {
+  interface Window {
+    __APP_CONFIG__?: Record<string, string>
+  }
+}
+
 const STORAGE_KEY = 'map-poc-state-v1'
 const UNIT_OPTIONS: Unit[] = ['m2', 'acre', 'hectare']
 
@@ -67,9 +73,17 @@ const DEFAULT_VIEW: MapViewState = {
   center: { lat: 20.5937, lng: 78.9629 },
   zoom: 5,
 }
+const RUNTIME_APP_CONFIG =
+  typeof window !== 'undefined' ? (window.__APP_CONFIG__ ?? {}) : {}
 const ENV_API_KEYS: ApiKeys = {
-  googleApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '',
-  mapboxToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? '',
+  googleApiKey:
+    RUNTIME_APP_CONFIG.VITE_GOOGLE_MAPS_API_KEY ??
+    import.meta.env.VITE_GOOGLE_MAPS_API_KEY ??
+    '',
+  mapboxToken:
+    RUNTIME_APP_CONFIG.VITE_MAPBOX_ACCESS_TOKEN ??
+    import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ??
+    '',
 }
 const CENTER_EPSILON = 0.00001
 const ZOOM_EPSILON = 0.01
